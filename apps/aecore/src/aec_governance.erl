@@ -11,7 +11,8 @@
          name_claim_max_expiration/0,
          name_protection_period/0,
          name_claim_preclaim_delta/0,
-         name_registrars/0]).
+         name_registrars/0,
+         micro_block_cycle/0]).
 
 -define(BLOCKS_TO_CHECK_DIFFICULTY_COUNT, 10).
 -define(EXPECTED_BLOCK_MINE_RATE, 300000). %% 60secs * 1000ms * 5 = 300000msecs
@@ -56,3 +57,7 @@ name_claim_preclaim_delta() ->
 
 name_registrars() ->
     [<<"aet">>, <<"test">>].
+
+micro_block_cycle() ->
+    %% Miliseconds
+    30000.
