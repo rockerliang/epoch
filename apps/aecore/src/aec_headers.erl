@@ -16,7 +16,7 @@
          serialize_pow_evidence/1,
          deserialize_pow_evidence/1,
          root_hash/1,
-         validate/1]).
+         validate/2]).
 
 -include("common.hrl").
 -include("blocks.hrl").
@@ -148,9 +148,9 @@ deserialize_pow_evidence(L) when is_list(L) ->
 deserialize_pow_evidence(_) ->
     'no_value'.
 
-
--spec validate(header()) -> ok | {error, term()}.
-validate(Header) ->
+%% TODO: implement validation of microblocks
+-spec validate(header(), binary()) -> ok | {error, term()}.
+validate(Header, _LeaderKey) ->
     Validators = [fun validate_version/1,
                   fun validate_pow/1,
                   fun validate_time/1],

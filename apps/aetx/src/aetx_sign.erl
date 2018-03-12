@@ -20,6 +20,8 @@
 %% API
 -export([sign/2,
          sign/3,
+         sign_bin/2,
+         sign_bin/3,
          tx/1,
          signatures/1,
          verify/2,
@@ -54,25 +56,34 @@
 %% return the cryptographically signed transaction using the default crypto
 %% parameters.
 -spec sign(tx(), list(binary()) | binary()) -> signed_tx().
+%% TODO: consider refactoring and removing sign api in favour of sign_tx
 sign(Tx, PrivKeys) ->
-  sign(Tx, PrivKeys, #{}).
+    sign_tx(Tx, PrivKeys, #{}).
 
--spec sign(tx(), list(binary()) | binary(), map()) -> signed_tx().
-%% @doc Given a transaction Tx, a private key and a crypto map,
-%% return the cryptographically signed transaction.
-%% A list of signers may be provided instead of one signer key.
-sign(Tx, PrivKey, CryptoMap) when is_binary(PrivKey) ->
-  sign(Tx, [PrivKey], CryptoMap);
-sign(Tx, PrivKeys, CryptoMap) when is_list(PrivKeys) ->
+sign(Tx, PrivKeys, CryptoMap) ->
+    sign_tx(Tx, PrivKeys, CryptoMap).
+
+sign_tx(Tx, PrivKeys, #{}) ->
     Bin = aetx:serialize_to_binary(Tx),
+    Signatures = do_sign_bin(Bin, PrivKeys, #{}),
+    #signed_tx{tx = Tx,
+               signatures = Signatures}.
+
+sign_bin(Binary, PrivKeys) ->
+    do_sign_bin(Binary, PrivKeys, #{}).
+
+sign_bin(MicroBlock, PrivKeys, CryptoMap) ->
+    do_sign_bin(MicroBlock, PrivKeys, CryptoMap).
+
+-spec do_sign_bin(binary(), list(binary()) | binary(), map()) -> signed_tx().
+do_sign_bin(Bin, PrivKey, CryptoMap) when is_binary(PrivKey) ->
+    sign_bin(Bin, [PrivKey], CryptoMap);
+do_sign_bin(Bin, PrivKeys, CryptoMap) when is_list(PrivKeys) ->
     Algo = maps:get(algo, CryptoMap, ecdsa),
     Digest = maps:get(digest, CryptoMap, sha256),
     Curve = maps:get(curve, CryptoMap, secp256k1),
-    Signatures =
-       [ crypto:sign(Algo, Digest, Bin, [PrivKey, crypto:ec_curve(Curve)]) ||
-         PrivKey <- PrivKeys ],
-    #signed_tx{tx = Tx,
-               signatures = Signatures}.
+    [ crypto:sign(Algo, Digest, Bin, [PrivKey, crypto:ec_curve(Curve)]) ||
+      PrivKey <- PrivKeys ].
 
 
 -spec tx(signed_tx()) -> tx().

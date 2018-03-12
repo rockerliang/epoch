@@ -237,11 +237,20 @@ internal_insert(Node, Original, State0) ->
     %% spurious error messages.
     State = State0#{ currently_adding => hash(Node)},
     assert_not_new_genesis(Node, State),
+    %% TODO: check if currently_adding follows the current_top
+    %%       if thats a key block it may cut in the middle
+    %%       and we need to go from current top to new key and revert the state
+    %%       THIS is why we may need to use a buffer in conductor to reduce churn
     assert_previous_height(Node),
     StateOut = internal_insert_1(Node, Original, State),
     maps:remove(currently_adding, StateOut).
 
+%%TODO: XXX is there a point to send out headers?
+    % * For microblocks there is no race
+    % * For key-block there are no txs...
+
 internal_insert_1(Node, Original, State) ->
+    %% TODO: XXX this looks like a bug. db_find_node/1 takes hash as arg
     case db_find_node(Node) of
         error ->
             assert_calculated_target(Node),
@@ -266,9 +275,10 @@ check_update_after_insert(Node, State) ->
         off_chain -> State;
         new_top -> update_state_tree(Node, maybe_add_genesis_hash(State, Node));
         in_chain -> update_state_tree(Node, State);
-        {fork, ForkNode} -> update_state_tree(ForkNode, State)
+        {fork, ForkNode} -> update_state_tree(ForkNode, State) %% TODO: how we know that ForkNode has more difficulty?
     end.
 
+%% TODO: ng - consider having pointer to prev key-block in a key-block
 determine_chain_relation(Node, State) ->
     Height   = node_height(Node),
     Hash     = Node#node.hash,
@@ -285,6 +295,8 @@ determine_chain_relation(Node, State) ->
             %% This is a genesis block.
             TopBlockHash = get_top_block_hash(State),
             GenesisHash = get_genesis_hash(State),
+            %% TODO: below doesn't look good -- always in_chain?
+            %% also why TopHash is not asserted as GenesisHash?
             case Hash =:= GenesisHash of
                 true when TopBlockHash =:= undefined -> in_chain;
                 true -> in_chain;
@@ -339,6 +351,7 @@ find_tops(Node, Acc) ->
 %% To assert the target calculation we need DeltaHeight headers counted
 %% backwards from the node we want to assert. If Height <= DeltaHeight
 %% we will need all headers back to genesis.
+%% TODO: redo to jump to prev key block
 assert_calculated_target(Node) ->
     case db_find_node(prev_hash(Node)) of
         error -> ok;

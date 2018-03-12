@@ -40,7 +40,7 @@ mine_block_test_() ->
                  %let_it_crash = generate_valid_test_data(TopBlock, 100000000000000),
                  meck:expect(aec_pow, pick_nonce, 0, 5323613534633545025),
 
-                 {ok, BlockCandidate, Nonce} = ?TEST_MODULE:create_block_candidate(TopBlock, aec_trees:new(), []),
+                 {ok, BlockCandidate, Nonce} = ?TEST_MODULE:create_key_block_candidate(TopBlock, aec_trees:new(), []),
                  HeaderBin = aec_headers:serialize_for_hash(aec_blocks:to_header(BlockCandidate)),
                  Target = aec_blocks:target(BlockCandidate),
                  {ok, {Nonce1, Evd}} = ?TEST_MODULE:mine(HeaderBin, Target, Nonce),
@@ -57,7 +57,7 @@ mine_block_test_() ->
          fun() ->
                  TopBlock = #block{target = ?LOWEST_TARGET_SCI},
                  meck:expect(aec_pow, pick_nonce, 0, 18),
-                 {ok, BlockCandidate, Nonce} = ?TEST_MODULE:create_block_candidate(TopBlock, aec_trees:new(), []),
+                 {ok, BlockCandidate, Nonce} = ?TEST_MODULE:create_key_block_candidate(TopBlock, aec_trees:new(), []),
                  HeaderBin = aec_headers:serialize_for_hash(aec_blocks:to_header(BlockCandidate)),
                  Target = aec_blocks:target(BlockCandidate),
                  ?assertEqual({error, no_solution},
@@ -105,7 +105,7 @@ difficulty_recalculation_test_() ->
                  meck:expect(aec_governance, expected_block_mine_rate, 0, OneBlockExpectedMineTime),
 
                  TopBlock = #block{},
-                 {ok, BlockCandidate, Nonce} = ?TEST_MODULE:create_block_candidate(TopBlock, aec_trees:new(), Chain),
+                 {ok, BlockCandidate, Nonce} = ?TEST_MODULE:create_key_block_candidate(TopBlock, aec_trees:new(), Chain),
                  HeaderBin = aec_headers:serialize_for_hash(aec_blocks:to_header(BlockCandidate)),
                  Target = aec_blocks:target(BlockCandidate),
                  {ok, {Nonce1, Evd}} = ?TEST_MODULE:mine(HeaderBin, Target, Nonce),
@@ -139,7 +139,7 @@ difficulty_recalculation_test_() ->
                  meck:expect(aec_governance, expected_block_mine_rate, 0, 300000),
 
                  TopBlock = #block{},
-                 {ok, BlockCandidate, Nonce} = ?TEST_MODULE:create_block_candidate(TopBlock, aec_trees:new(), Chain),
+                 {ok, BlockCandidate, Nonce} = ?TEST_MODULE:create_key_block_candidate(TopBlock, aec_trees:new(), Chain),
                  HeaderBin = aec_headers:serialize_for_hash(aec_blocks:to_header(BlockCandidate)),
                  Target = aec_blocks:target(BlockCandidate),
                  {ok, {Nonce1, Evd}} = ?TEST_MODULE:mine(HeaderBin, Target, Nonce),
@@ -202,7 +202,7 @@ cleanup(_) ->
 generate_valid_test_data(_TopBlock, Tries) when Tries < 1 ->
     could_not_find_nonce;
 generate_valid_test_data(TopBlock, Tries) ->
-    {ok, BlockCandidate, Nonce} = ?TEST_MODULE:create_block_candidate(TopBlock, aec_trees:new(), []),
+    {ok, BlockCandidate, Nonce} = ?TEST_MODULE:create_key_block_candidate(TopBlock, aec_trees:new(), []),
     HeaderBin = aec_headers:serialize_for_hash(aec_blocks:to_header(BlockCandidate)),
     Target = aec_blocks:target(BlockCandidate),
     case ?TEST_MODULE:mine(HeaderBin, Target, Nonce) of

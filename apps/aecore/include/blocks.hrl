@@ -29,7 +29,9 @@
           nonce = 0               :: non_neg_integer(),
           time = 0                :: non_neg_integer(),
           version = ?PROTOCOL_VERSION :: non_neg_integer(),
-          pow_evidence = no_value :: aec_pow:pow_evidence()}).
+          pow_evidence = no_value :: aec_pow:pow_evidence(),
+          key = undefined         :: binary() | undefined,
+          signature = undefined   :: binary() | undefined}).
 
 -record(header, {
           height = 0              :: height(),

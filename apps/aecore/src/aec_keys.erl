@@ -189,6 +189,14 @@ init([Password, KeysDir]) when is_binary(Password) ->
 %%--------------------------------------------------------------------
 handle_call({sign, _}, _From, #state{priv=undefined} = State) ->
     {reply, {error, key_not_found}, State};
+handle_call({sign, Bin}, _From,
+    #state{priv=PrivKey, crypto = #crypto{algo=Algo,
+                                          digest=Digest,
+                                          curve=Curve}} = State)
+    when is_binary(Bin) ->
+    CryptoMap = #{algo => Algo, digest => Digest, curve => Curve},
+    Signatures = aetx_sign:sign_bin(Bin, PrivKey, CryptoMap),
+    {reply, {ok, {Signatures, Bin}}, State};
 handle_call({sign, Tx}, _From,
             #state{pub = PubKey, priv=PrivKey,
                    crypto = #crypto{algo=Algo,
