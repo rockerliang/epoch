@@ -10,7 +10,8 @@
 % Test cases
 -export([new_node_joins_network/1,
          docker_keeps_data/1,
-         crash_and_continue_sync/1]).
+         stop_and_continue_sync/1
+        ]).
 
 -import(aest_nodes, [
     setup_nodes/2,
@@ -70,7 +71,7 @@
 all() -> [
     new_node_joins_network
     , docker_keeps_data
-    , crash_and_continue_sync
+    , stop_and_continue_sync
 ].
 
 init_per_testcase(_TC, Config) ->
@@ -211,7 +212,12 @@ docker_keeps_data(Cfg) ->
 
     ok.
 
-crash_and_continue_sync(Cfg) ->
+%% If Node2 has a sync process that fetches blocks from Node1, then
+%% if Node1 is stopped and restarted, sync will be able to recover and catch up
+%% with Node1 after its restart.
+%% Note that Node1 must be considerably ahead to make sure Node2 does not
+%% create a fork with higher difficulty in the time Node1 restarts.
+stop_and_continue_sync(Cfg) ->
     BlocksPerSecond = proplists:get_value(blocks_per_second, Cfg),
     NodeStartupTime = proplists:get_value(node_startup_time, Cfg),
     %% Create a chain long enough to need 10 seconds to fetch it
@@ -237,8 +243,8 @@ crash_and_continue_sync(Cfg) ->
     wait_for_height(0, [old_node2], NodeStartupTime, Cfg),
     ct:log("Node 2 ready to go"),
 
-    %% we are fetching blocks crash now
-    kill_node(old_node1, Cfg),
+    %% we are fetching blocks stop node1 now
+    stop_node(old_node1, Cfg),
     Top2 = request(old_node2, [v2, 'top'], #{}, Cfg),
     ct:log("Node 2 top: ~p~n", [Top2]),
     Height = maps:get(height, Top2),
