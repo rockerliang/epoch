@@ -157,7 +157,7 @@
       "get" : {
         "tags" : [ "external", "gossip" ],
         "description" : "Get a block by hash",
-        "operationId" : "GetBlockByHash",
+        "operationId" : "GetBlockByHashDeprecated",
         "produces" : [ "application/json" ],
         "parameters" : [ {
           "name" : "hash",
@@ -1564,9 +1564,9 @@
     },
     "/block/hash/{hash}" : {
       "get" : {
-        "tags" : [ "internal", "chain" ],
+        "tags" : [ "external", "chain" ],
         "description" : "Get a block by hash",
-        "operationId" : "GetBlockByHashInternal",
+        "operationId" : "GetBlockByHash",
         "produces" : [ "application/json" ],
         "parameters" : [ {
           "name" : "hash",
@@ -1580,7 +1580,7 @@
           "description" : "Transactions encoding",
           "required" : false,
           "type" : "string",
-          "default" : "message_pack",
+          "default" : "json",
           "enum" : [ "message_pack", "json" ]
         } ],
         "responses" : {

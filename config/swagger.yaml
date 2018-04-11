@@ -137,7 +137,7 @@ paths:
       tags:
         - external
         - gossip
-      operationId: GetBlockByHash
+      operationId: GetBlockByHashDeprecated
       description: 'Get a block by hash'
       produces:
         - application/json
@@ -1322,9 +1322,9 @@ paths:
   /block/hash/{hash}:
     get:
       tags:
-        - internal
+        - external
         - chain
-      operationId: GetBlockByHashInternal
+      operationId: GetBlockByHash
       description: 'Get a block by hash'
       produces:
         - application/json
@@ -1339,7 +1339,7 @@ paths:
           description: 'Transactions encoding'
           type: string
           enum: [message_pack, json]
-          default: message_pack
+          default: json
       responses:
         '200':
           description: The block being found

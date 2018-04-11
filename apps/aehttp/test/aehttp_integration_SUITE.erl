@@ -25,8 +25,11 @@
     block_by_height/1,
     block_not_found_by_height/1,
     block_by_hash/1,
+    block_by_hash_deprecated/1,
     block_not_found_by_broken_hash/1,
     block_not_found_by_hash/1,
+    block_not_found_by_broken_hash_deprecated/1,
+    block_not_found_by_hash_deprecated/1,
 
     % non signed txs
     contract_transactions/1,
@@ -73,14 +76,11 @@
     block_number/1,
 
     internal_block_by_height/1,
-    internal_block_by_hash/1,
     internal_block_genesis/1,
     internal_block_pending/1,
     internal_block_latest/1,
 
     internal_block_not_found_by_height/1,
-    internal_block_not_found_by_broken_hash/1,
-    internal_block_not_found_by_hash/1,
 
     block_txs_count_by_height/1,
     block_txs_count_by_hash/1,
@@ -142,6 +142,7 @@
     wrong_http_method_name_revoke/1,
     wrong_http_method_block_by_height/1,
     wrong_http_method_block_by_hash/1,
+    wrong_http_method_block_by_hash_deprecated/1,
     wrong_http_method_header_by_hash/1,
     wrong_http_method_transactions/1,
     wrong_http_method_tx_id/1,
@@ -163,7 +164,6 @@
     wrong_http_method_info/1,
     wrong_http_method_block_number/1,
     wrong_http_method_internal_block_by_height/1,
-    wrong_http_method_internal_block_by_hash/1,
     wrong_http_method_internal_block_latest/1,
     wrong_http_method_internal_block_genesis/1,
     wrong_http_method_internal_block_pending/1,
@@ -221,8 +221,11 @@ groups() ->
         block_by_height,
         block_not_found_by_height,
         block_by_hash,
+        block_by_hash_deprecated,
         block_not_found_by_broken_hash,
         block_not_found_by_hash,
+        block_not_found_by_broken_hash_deprecated,
+        block_not_found_by_hash_deprecated,
 
         % non signed txs
         contract_transactions,
@@ -269,14 +272,11 @@ groups() ->
         block_number,
 
         internal_block_by_height,
-        internal_block_by_hash,
         internal_block_genesis,
         internal_block_pending,
         internal_block_latest,
 
         internal_block_not_found_by_height,
-        internal_block_not_found_by_broken_hash,
-        internal_block_not_found_by_hash,
 
         block_txs_count_by_height,
         block_txs_count_by_hash,
@@ -328,6 +328,7 @@ groups() ->
         wrong_http_method_name_revoke,
         wrong_http_method_block_by_height,
         wrong_http_method_block_by_hash,
+        wrong_http_method_block_by_hash_deprecated,
         wrong_http_method_header_by_hash,
         wrong_http_method_transactions,
         wrong_http_method_tx_id,
@@ -349,7 +350,6 @@ groups() ->
         wrong_http_method_info,
         wrong_http_method_block_number,
         wrong_http_method_internal_block_by_height,
-        wrong_http_method_internal_block_by_hash,
         wrong_http_method_internal_block_latest,
         wrong_http_method_internal_block_genesis,
         wrong_http_method_internal_block_pending,
@@ -492,28 +492,68 @@ block_not_found_by_height(_Config) ->
     ok.
 
 block_not_found_by_hash(_Config) ->
+    lists:foreach(
+        fun(_Height) ->
+            lists:foreach(
+                fun(Opt) ->
+                    H = random_hash(),
+                    error = rpc(aec_chain, get_block, [H]),
+                    Hash = aec_base58c:encode(block_hash, H),
+                    {ok, 404, #{<<"reason">> := <<"Block not found">>}}
+                        = get_block_by_hash(Hash, Opt)
+                end,
+                [default, message_pack, json])
+        end,
+        lists:seq(1, ?DEFAULT_TESTS_COUNT)),
+    ok.
+
+block_not_found_by_broken_hash(_Config) ->
+    lists:foreach(
+        fun(_) ->
+            <<_, BrokenHash/binary>> = aec_base58c:encode(block_hash, random_hash()),
+            lists:foreach(
+                fun(Opt) ->
+                    {ok, 400, #{<<"reason">> := <<"Invalid hash">>}} =
+                        get_block_by_hash(BrokenHash, Opt)
+                end,
+                [default, message_pack, json])
+        end,
+        lists:seq(1, ?DEFAULT_TESTS_COUNT)),
+    ok.
+
+block_not_found_by_hash_deprecated(_Config) ->
     NumberOfChecks = ?DEFAULT_TESTS_COUNT,
     lists:foreach(
         fun(_) ->
             H = random_hash(),
             error = rpc(aec_chain, get_block, [H]),
             Hash = aec_base58c:encode(block_hash, H),
-            {ok, 404, #{<<"reason">> := <<"Block not found">>}} = get_block_by_hash(Hash)
+            {ok, 404, #{<<"reason">> := <<"Block not found">>}} = get_block_by_hash_deprecated(Hash)
         end,
         lists:seq(1, NumberOfChecks)), % number
     ok.
 
-block_not_found_by_broken_hash(_Config) ->
+block_not_found_by_broken_hash_deprecated(_Config) ->
     NumberOfChecks = ?DEFAULT_TESTS_COUNT,
     lists:foreach(
         fun(_) ->
             <<_, BrokenHash/binary>> = aec_base58c:encode(block_hash, random_hash()),
-            {ok, 400, #{<<"reason">> := <<"Invalid hash">>}} = get_block_by_hash(BrokenHash)
+            {ok, 400, #{<<"reason">> := <<"Invalid hash">>}} = get_block_by_hash_deprecated(BrokenHash)
         end,
         lists:seq(1, NumberOfChecks)), % number
     ok.
 
 block_by_hash(_Config) ->
+    GetExpectedBlockFun =
+        fun(H) -> rpc(aec_chain, get_block_by_height, [H]) end,
+    CallApiFun =
+        fun(H, Opts) ->
+            {ok, Hash} = block_hash_by_height(H),
+            get_block_by_hash(Hash, Opts)
+        end,
+    internal_get_block_generic(GetExpectedBlockFun, CallApiFun).
+
+block_by_hash_deprecated(_Config) ->
     BlocksToCheck = 4,
     InitialHeight = aec_blocks:height(rpc(aec_chain, top_block, [])),
     BlocksToMine = max(BlocksToCheck - InitialHeight, 0),
@@ -532,7 +572,7 @@ block_by_hash(_Config) ->
             {ok, H} = aec_blocks:hash_internal_representation(ExpectedBlock),
             Hash = aec_base58c:encode(block_hash, H),
             ExpectedBlockMap = block_to_endpoint_gossip_map(ExpectedBlock),
-            {ok, 200, BlockMap} = get_block_by_hash(Hash),
+            {ok, 200, BlockMap} = get_block_by_hash_deprecated(Hash),
             ct:log("ExpectedBlockMap ~p, BlockMap: ~p", [ExpectedBlockMap,
                                                          BlockMap]),
             BlockMap = ExpectedBlockMap,
@@ -1599,46 +1639,6 @@ internal_block_not_found_by_height(_Config) ->
                 fun(Opt) ->
                     {ok, 404, #{<<"reason">> := <<"Chain too short">>}}
                         = get_internal_block_by_height(H, Opt)
-                end,
-                [default, message_pack, json])
-        end,
-        lists:seq(1, ?DEFAULT_TESTS_COUNT)),
-    ok.
-
-internal_block_by_hash(_Config) ->
-    GetExpectedBlockFun =
-        fun(H) -> rpc(aec_chain, get_block_by_height, [H]) end,
-    CallApiFun =
-        fun(H, Opts) ->
-            {ok, Hash} = block_hash_by_height(H),
-            get_internal_block_by_hash(Hash, Opts)
-        end,
-    internal_get_block_generic(GetExpectedBlockFun, CallApiFun).
-
-internal_block_not_found_by_hash(_Config) ->
-    lists:foreach(
-        fun(_Height) ->
-            lists:foreach(
-                fun(Opt) ->
-                    H = random_hash(),
-                    error = rpc(aec_chain, get_block, [H]),
-                    Hash = aec_base58c:encode(block_hash, H),
-                    {ok, 404, #{<<"reason">> := <<"Block not found">>}}
-                        = get_internal_block_by_hash(Hash, Opt)
-                end,
-                [default, message_pack, json])
-        end,
-        lists:seq(1, ?DEFAULT_TESTS_COUNT)),
-    ok.
-
-internal_block_not_found_by_broken_hash(_Config) ->
-    lists:foreach(
-        fun(_) ->
-            <<_, BrokenHash/binary>> = aec_base58c:encode(block_hash, random_hash()),
-            lists:foreach(
-                fun(Opt) ->
-                    {ok, 400, #{<<"reason">> := <<"Invalid hash">>}} =
-                        get_internal_block_by_hash(BrokenHash, Opt)
                 end,
                 [default, message_pack, json])
         end,
@@ -2891,7 +2891,12 @@ get_block_by_height(Height) ->
     Host = external_address(),
     http_request(Host, get, "block-by-height", [{height, Height}]).
 
-get_block_by_hash(Hash) ->
+get_block_by_hash(Hash, TxObjects) ->
+    Params = tx_encoding_param(TxObjects),
+    Host = external_address(),
+    http_request(Host, get, "block/hash/" ++ http_uri:encode(Hash), Params).
+
+get_block_by_hash_deprecated(Hash) ->
     Host = external_address(),
     http_request(Host, get, "block-by-hash", [{hash, Hash}]).
 
@@ -3014,11 +3019,6 @@ get_internal_block_by_height(Height, TxObjects) ->
     Params = tx_encoding_param(TxObjects),
     Host = internal_address(),
     http_request(Host, get, "block/height/" ++ integer_to_list(Height), Params).
-
-get_internal_block_by_hash(Hash, TxObjects) ->
-    Params = tx_encoding_param(TxObjects),
-    Host = internal_address(),
-    http_request(Host, get, "block/hash/" ++ http_uri:encode(Hash), Params).
 
 get_internal_block_preset(Segment, TxObjects) ->
     Params = tx_encoding_param(TxObjects),
@@ -3284,6 +3284,10 @@ wrong_http_method_block_by_height(_Config) ->
 
 wrong_http_method_block_by_hash(_Config) ->
     Host = external_address(),
+    {ok, 405, _} = http_request(Host, post, "block/hash/123", []).
+
+wrong_http_method_block_by_hash_deprecated(_Config) ->
+    Host = external_address(),
     {ok, 405, _} = http_request(Host, post, "block-by-hash", []).
 
 wrong_http_method_header_by_hash(_Config) ->
@@ -3369,10 +3373,6 @@ wrong_http_method_block_number(_Config) ->
 wrong_http_method_internal_block_by_height(_Config) ->
     Host = internal_address(),
     {ok, 405, _} = http_request(Host, post, "block/height/123", []).
-
-wrong_http_method_internal_block_by_hash(_Config) ->
-    Host = internal_address(),
-    {ok, 405, _} = http_request(Host, post, "block/hash/123", []).
 
 wrong_http_method_internal_block_latest(_Config) ->
     Host = internal_address(),
@@ -3689,4 +3689,3 @@ make_params([H | T], Accum) when is_map(H) ->
     make_params(T, maps:to_list(H) ++ Accum);
 make_params([{K, V} | T], Accum) ->
     make_params(T, [{K, V} | Accum]).
-    

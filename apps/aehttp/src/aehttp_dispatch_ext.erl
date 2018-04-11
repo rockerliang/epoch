@@ -27,6 +27,7 @@
                         , read_tx_encoding_param/1
                         , parse_filter_param/2
                         , read_optional_param/3
+                        , get_block/3
                         ]).
 
 -compile({parse_transform, lager_transform}).
@@ -56,7 +57,15 @@ handle_request('GetBlockByHeight', Req, _Context) ->
             {404, [], #{reason => <<"Chain too short">>}}
     end;
 
-handle_request('GetBlockByHash' = _Method, Req, _Context) ->
+handle_request('GetBlockByHash', Req, _Context) ->
+    case aec_base58c:safe_decode(block_hash, maps:get('hash', Req)) of
+        {error, _} ->
+            {400, [], #{reason => <<"Invalid hash">>}};
+        {ok, Hash} ->
+            get_block(fun() -> aehttp_logic:get_block_by_hash(Hash) end, Req, json)
+    end;
+
+handle_request('GetBlockByHashDeprecated' = _Method, Req, _Context) ->
     case aec_base58c:safe_decode(block_hash, maps:get('hash', Req)) of
         {error, _} ->
             {400, [], #{reason => <<"Invalid hash">>}};
