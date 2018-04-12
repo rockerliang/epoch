@@ -429,11 +429,15 @@ do_start_sync(PeerId, RemoteHash) ->
             LocalHeight = aec_headers:height(LocalHeader),
             RemoteHeight = aec_headers:height(Hdr),
             AgreedHeight =
-               case LocalHeight == 0 of
-                    true -> 0;
-                    false ->
+               if LocalHeight == 0 -> 0;
+                  LocalHeight =< RemoteHeight ->
                       agree_on_height(PeerId, Hdr, RemoteHeight,
-                                      LocalHeader, LocalHeight, LocalHeight, 0)
+                                      LocalHeader, LocalHeight, LocalHeight, 0);
+                  LocalHeight > RemoteHeight ->
+                      %% We have longer chain but less difficulty
+                      {ok, LowerLocal} = aec_chain:get_header_by_height(RemoteHeight),
+                      agree_on_height(PeerId, Hdr, RemoteHeight,
+                                      LowerLocal, RemoteHeight, RemoteHeight, 0)
                end,
             lager:debug("Agreed upon height (~p): ~p", [ppp(PeerId), AgreedHeight]),
             {ok, LocalAtHeight} = aec_chain:get_header_by_height(AgreedHeight),
